@@ -1,9 +1,14 @@
 library(tidyverse)
 library(data.table)
+options(scipen = 999)
+library(randomForest)
+library(DALEX)
+library(gbm)
+#library(Boruta)
+#library(rFerns)
 library(mice)
 library(VIM)
 library(lattice)
-options(scipen = 999)
 
 # Data cleaning ---------------------------------------------------------------------------------------------
 
@@ -173,7 +178,6 @@ Imputed_data[ , "Length_of_stay"] <- lapply(Imputed_data[ , "Length_of_stay"], a
 
 Imputed_data <- Imputed_data %>% mutate_if(is.character, as.factor)
 
-# Imputed_data <- Imputed_data %>% mutate_if(is.numeric, scale)
 
 
 # --------------------------------------
@@ -219,8 +223,7 @@ model <- (glm(Rectal_carriage ~
       IMV_ecmo+
       Hydroxychloroquine+
       Lopinavir_ritonavir+
-      Infection+
-      KPC_EB_or_ACB_respiratory_tract_infection  , data = Imputed_data, family=binomial()))
+      Infection  , data = Imputed_data, family=binomial()))
 
 model <- tidy(model)
 
@@ -318,17 +321,21 @@ storage_30daymortality$Lower <- exp(storage_30daymortality$estimate - storage_30
 
 storage_30daymortality$Lower <- round(storage_30daymortality$Lower,digits=5)
 
-storage_infection %>% filter(p.value<0.05)
+storage_30daymortality %>% filter(p.value<0.05)
 
 model <- (glm(Death_30day ~ 
+      Age  +
       ICU  +
-      Pulmonary_embolism  +
-      CPK  +
-      Ferritin  +
-      Lymphocytes_count +
-      CRP  +
-       IMV_ecmo  +
-       Rectal_carriage   , data = Imputed_data, family=binomial()))
+      Chronic_pulm_disease  +
+      Neo   +
+      Charlson_comorbidity_index +
+      Bilateral_pneumonia_or_ARDS   +
+       Lymphocytes_count  +
+       IMV_ecmo +
+        CN_MV_MR_CPAP  +
+        Dexamethasone_glucocorticoids   +
+        KPC_EB_or_ACB_respiratory_tract_infection  +
+        Length_of_stay  , data = Imputed_data, family=binomial()))
 
 model <- tidy(model)
 
@@ -341,3 +348,152 @@ data.frame(model)
 
 
 # ----------------------------
+# Variable Importance with Boruta ---------------------------
+Imputed_data <- fread("Imputed_data.txt", sep="\t", colClasses = "character")
+
+Imputed_data[ , "Age"] <- lapply(Imputed_data[ , "Age"], as.numeric)
+Imputed_data[ , "Charlson_comorbidity_index"] <- lapply(Imputed_data[ , "Charlson_comorbidity_index"], as.numeric)
+Imputed_data[ , "D_dimer"] <- lapply(Imputed_data[ , "D_dimer"], as.numeric)
+Imputed_data[ , "LDH"] <- lapply(Imputed_data[ , "LDH"], as.numeric)
+Imputed_data[ , "CPK"] <- lapply(Imputed_data[ , "CPK"], as.numeric)
+Imputed_data[ , "NT_proBNP"] <- lapply(Imputed_data[ , "NT_proBNP"], as.numeric)
+Imputed_data[ , "Troponin_T"] <- lapply(Imputed_data[ , "Troponin_T"], as.numeric)
+Imputed_data[ , "Ferritin"] <- lapply(Imputed_data[ , "Ferritin"], as.numeric)
+Imputed_data[ , "Creatinine"] <- lapply(Imputed_data[ , "Creatinine"], as.numeric)
+Imputed_data[ , "Lymphocytes_count"] <- lapply(Imputed_data[ , "Lymphocytes_count"], as.numeric)
+Imputed_data[ , "Procalcitonin"] <- lapply(Imputed_data[ , "Procalcitonin"], as.numeric)
+Imputed_data[ , "CRP"] <- lapply(Imputed_data[ , "CRP"], as.numeric)
+Imputed_data[ , "Length_of_stay"] <- lapply(Imputed_data[ , "Length_of_stay"], as.numeric)
+
+Imputed_data <- Imputed_data %>% mutate_if(is.character, as.factor)
+
+
+Boruta(Death_30day~.,data=Imputed_data,doTrace=2)->Boruta.Imputed_data
+
+print(Boruta.Imputed_data)
+plot(Boruta.Imputed_data)
+
+data.frame(Boruta.Imputed_data$finalDecision) %>%
+  arrange(Boruta.Imputed_data.finalDecision)
+
+
+plot(Boruta.Imputed_data, 
+     colCode = c("violetred4", "violetred4", "steelblue4", "snow2"),
+     notch = TRUE, las = 2, cex.axis=0.5, xlab="", ylab= "Relative Importance")
+
+
+plotImpHistory(Boruta.Imputed_data)
+
+# -------------------------------------------
+# Classifiers --------------
+
+Imputed_data <- fread("Imputed_data.txt", sep="\t", colClasses = "character")
+
+Imputed_data[ , "Age"] <- lapply(Imputed_data[ , "Age"], as.numeric)
+Imputed_data[ , "Charlson_comorbidity_index"] <- lapply(Imputed_data[ , "Charlson_comorbidity_index"], as.numeric)
+Imputed_data[ , "D_dimer"] <- lapply(Imputed_data[ , "D_dimer"], as.numeric)
+Imputed_data[ , "LDH"] <- lapply(Imputed_data[ , "LDH"], as.numeric)
+Imputed_data[ , "CPK"] <- lapply(Imputed_data[ , "CPK"], as.numeric)
+Imputed_data[ , "NT_proBNP"] <- lapply(Imputed_data[ , "NT_proBNP"], as.numeric)
+Imputed_data[ , "Troponin_T"] <- lapply(Imputed_data[ , "Troponin_T"], as.numeric)
+Imputed_data[ , "Ferritin"] <- lapply(Imputed_data[ , "Ferritin"], as.numeric)
+Imputed_data[ , "Creatinine"] <- lapply(Imputed_data[ , "Creatinine"], as.numeric)
+Imputed_data[ , "Lymphocytes_count"] <- lapply(Imputed_data[ , "Lymphocytes_count"], as.numeric)
+Imputed_data[ , "Procalcitonin"] <- lapply(Imputed_data[ , "Procalcitonin"], as.numeric)
+Imputed_data[ , "CRP"] <- lapply(Imputed_data[ , "CRP"], as.numeric)
+Imputed_data[ , "Length_of_stay"] <- lapply(Imputed_data[ , "Length_of_stay"], as.numeric)
+
+Imputed_data <- Imputed_data %>% mutate_if(is.character, as.factor)
+
+# Imputed_data <- Imputed_data %>% mutate(new_Age = cut(Age, breaks=5)) %>% 
+#   mutate(new_Age=paste0("Age_",new_Age)) %>% mutate(OneHot=1) %>%
+#   spread(key=new_Age, value=OneHot) %>% select(-Age) %>%
+#   replace(is.na(.), 0)
+# 
+# Imputed_data <- Imputed_data %>% mutate(new_Charlson_comorbidity_index = cut(Charlson_comorbidity_index, breaks=5)) %>% 
+#   mutate(new_Charlson_comorbidity_index=paste0("Charlson_comorbidity_index_",new_Charlson_comorbidity_index)) %>% mutate(OneHot=1) %>%
+#   spread(key=new_Charlson_comorbidity_index, value=OneHot) %>% select(-Charlson_comorbidity_index) %>%
+#   replace(is.na(.), 0)
+# 
+# Imputed_data <- Imputed_data %>% mutate(new_D_dimer = cut(D_dimer, breaks=5)) %>% 
+#   mutate(new_D_dimer=paste0("D_dimer_",new_D_dimer)) %>% mutate(OneHot=1) %>%
+#   spread(key=new_D_dimer, value=OneHot) %>% select(-D_dimer) %>%
+#   replace(is.na(.), 0)
+# 
+# Imputed_data <- Imputed_data %>% mutate(new_LDH = cut(LDH, breaks=5)) %>% 
+#   mutate(new_LDH=paste0("LDH_",new_LDH)) %>% mutate(OneHot=1) %>%
+#   spread(key=new_LDH, value=OneHot) %>% select(-LDH) %>%
+#   replace(is.na(.), 0)
+# 
+# Imputed_data <- Imputed_data %>% mutate(new_CPK = cut(CPK, breaks=5)) %>% 
+#   mutate(new_CPK=paste0("CPK_",new_CPK)) %>% mutate(OneHot=1) %>%
+#   spread(key=new_CPK, value=OneHot) %>% select(-CPK) %>%
+#   replace(is.na(.), 0)
+# 
+# Imputed_data <- Imputed_data %>% mutate(new_NT_proBNP = cut(NT_proBNP, breaks=5)) %>% 
+#   mutate(new_NT_proBNP=paste0("NT_proBNP_",new_NT_proBNP)) %>% mutate(OneHot=1) %>%
+#   spread(key=new_NT_proBNP, value=OneHot) %>% select(-NT_proBNP) %>%
+#   replace(is.na(.), 0)
+# 
+# Imputed_data <- Imputed_data %>% mutate(new_Troponin_T = cut(Troponin_T, breaks=5)) %>% 
+#   mutate(new_Troponin_T=paste0("Troponin_T_",new_Troponin_T)) %>% mutate(OneHot=1) %>%
+#   spread(key=new_Troponin_T, value=OneHot) %>% select(-Troponin_T) %>%
+#   replace(is.na(.), 0)
+# 
+# Imputed_data <- Imputed_data %>% mutate(new_Ferritin = cut(Ferritin, breaks=5)) %>% 
+#   mutate(new_Ferritin=paste0("Ferritin_",new_Ferritin)) %>% mutate(OneHot=1) %>%
+#   spread(key=new_Ferritin, value=OneHot) %>% select(-Ferritin) %>%
+#   replace(is.na(.), 0)
+# 
+# Imputed_data <- Imputed_data %>% mutate(new_Creatinine = cut(Creatinine, breaks=5)) %>% 
+#   mutate(new_Creatinine=paste0("Creatinine_",new_Creatinine)) %>% mutate(OneHot=1) %>%
+#   spread(key=new_Creatinine, value=OneHot) %>% select(-Creatinine) %>%
+#   replace(is.na(.), 0)
+# 
+# Imputed_data <- Imputed_data %>% mutate(new_Lymphocytes_count = cut(Lymphocytes_count, breaks=5)) %>% 
+#   mutate(new_Lymphocytes_count=paste0("Lymphocytes_count_",new_Lymphocytes_count)) %>% mutate(OneHot=1) %>%
+#   spread(key=new_Lymphocytes_count, value=OneHot) %>% select(-Lymphocytes_count) %>%
+#   replace(is.na(.), 0)
+# 
+# Imputed_data <- Imputed_data %>% mutate(new_Procalcitonin = cut(Procalcitonin, breaks=5)) %>% 
+#   mutate(new_Procalcitonin=paste0("Procalcitonin_",new_Procalcitonin)) %>% mutate(OneHot=1) %>%
+#   spread(key=new_Procalcitonin, value=OneHot) %>% select(-Procalcitonin) %>%
+#   replace(is.na(.), 0)
+# 
+# Imputed_data <- Imputed_data %>% mutate(new_CRP = cut(CRP, breaks=5)) %>% 
+#   mutate(new_CRP=paste0("CRP_",new_CRP)) %>% mutate(OneHot=1) %>%
+#   spread(key=new_CRP, value=OneHot) %>% select(-CRP) %>%
+#   replace(is.na(.), 0)
+# 
+# Imputed_data <- Imputed_data %>% mutate(new_Length_of_stay = cut(Length_of_stay, breaks=5)) %>% 
+#   mutate(new_Length_of_stay=paste0("Length_of_stay_",new_Length_of_stay)) %>% mutate(OneHot=1) %>%
+#   spread(key=new_Length_of_stay, value=OneHot) %>% select(-Length_of_stay) %>%
+#   replace(is.na(.), 0)
+# 
+# Imputed_data <- Imputed_data %>% mutate_if(is.numeric, as.factor)
+
+
+
+
+temp <- as.matrix(
+  Imputed_data %>% group_by(Death_30day, Infection) %>% 
+    count() %>% ungroup() %>%
+  spread(key=Infection, value=n))
+
+matrix(as.numeric(c(temp[1,2], temp[1,3], temp[2,2], temp[2,3])), nrow=2) 
+
+fisher.test( matrix(as.numeric(c(temp[1,2], temp[1,3], temp[2,2], temp[2,3])), nrow=2)  )
+
+# Random forest 
+modelAll_1_randomForest <- randomForest(Death_30day ~ . , data = Imputed_data, importance = F)
+
+summary(modelAll_1_randomForest)
+
+data.frame(modelAll_1_randomForest$importance) %>%
+  arrange(-MeanDecreaseGini)
+
+# Gradient Boost
+modelAll_1_gbm <- gbm(Death_30day == 1 ~ . , data = Imputed_data, 
+                n.trees = 15000, distribution = "bernoulli")
+
+summary(modelAll_1_gbm, las=2, cex.lab=0.5)
