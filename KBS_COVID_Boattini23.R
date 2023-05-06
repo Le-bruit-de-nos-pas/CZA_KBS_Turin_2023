@@ -495,12 +495,8 @@ for(i in names(Imputed_data)[-48]){
   Storage_means <- rbind(Storage_means, x)
 }
 
-quantile(Imputed_data$ICU_LoS[Imputed_data$Death==0])
-
-
-
-
-shapiro.test(Imputed_data$)
+IQR(Imputed_data$Age)
+shapiro.test(Imputed_data$ICU_LoS)
 
 
 for(i in names(Imputed_data_factors)){
