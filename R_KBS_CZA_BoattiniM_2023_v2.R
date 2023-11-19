@@ -345,7 +345,7 @@ head(bd_ranger)
 plot(bd_ranger)
 
 # -------------------------------------------------------------
-# Random Forest - reduced variables ----------------------
+# Random Forest - reduced variables for accuracy ----------------------
 
 KBS_CZA_BoattiniM_2023 <- fread("KBS_CZA_BoattiniM_2023.txt", sep = "\t" , colClasses = "character")
 
@@ -412,7 +412,8 @@ table_mat <- table(temp$In_hospital_death,predict(modelAll_1_randomForest, temp)
 
 
 accuracy_Test <- sum(diag(table_mat)) / sum(table_mat)
-accuracy_Test
+accuracy_Test # 0.8918919
+
 
 precision <- function(matrix) {
   # True positive
@@ -432,13 +433,14 @@ recall <- function(matrix) {
 
 
 prec <- precision(table_mat)
-prec
+prec # 075
 
 rec <- recall(table_mat)
-rec 
+rec # 075
 
 f1 <- 2 * ((prec * rec) / (prec + rec))
-f1 
+f1 # 0.75
+
 
 table_mat <- as.data.frame(table_mat)
 
@@ -599,3 +601,219 @@ KBS_CZA_BoattiniM_2023 %>% group_by(In_hospital_death) %>% summarise(n=median(Ag
 wilcox.test(CPE_INCREMENT~D30_mortality, data = KBS_CZA_BoattiniM_2023)
 
 
+
+# ----------------
+
+# Reviewer answer --------------------------------
+
+KBS_CZA_BoattiniM_2023 <- fread("KBS_CZA_BoattiniM_2023.txt", sep = "\t" , colClasses = "character")
+data.frame(colSums(KBS_CZA_BoattiniM_2023==""))
+  
+KBS_CZA_BoattiniM_2023$D30_mortality[KBS_CZA_BoattiniM_2023$D30_mortality==""] <- 0
+
+KBS_CZA_BoattiniM_2023$D30_mortality <- as.factor(KBS_CZA_BoattiniM_2023$D30_mortality)
+KBS_CZA_BoattiniM_2023$In_hospital_death <- as.factor(KBS_CZA_BoattiniM_2023$In_hospital_death)
+
+KBS_CZA_BoattiniM_2023 <- KBS_CZA_BoattiniM_2023 %>% mutate(Prolonged_B_lact_infusion = ifelse(Prolonged_B_lact_infusion=="", 0, Prolonged_B_lact_infusion))
+KBS_CZA_BoattiniM_2023 <- KBS_CZA_BoattiniM_2023 %>% mutate(KPC_Infection_relapse = ifelse(KPC_Infection_relapse=="", 0, KPC_Infection_relapse))
+KBS_CZA_BoattiniM_2023 <- KBS_CZA_BoattiniM_2023 %>% mutate(Dyalisis_30day_preceding = ifelse(Dyalisis_30day_preceding=="", 1, Dyalisis_30day_preceding))
+
+KBS_CZA_BoattiniM_2023[, 1] <- lapply(KBS_CZA_BoattiniM_2023[ , 1], as.numeric)
+KBS_CZA_BoattiniM_2023[, 12] <- lapply(KBS_CZA_BoattiniM_2023[ , 12], as.numeric)
+KBS_CZA_BoattiniM_2023[, 18] <- lapply(KBS_CZA_BoattiniM_2023[ , 18], as.numeric)
+KBS_CZA_BoattiniM_2023[, 19] <- lapply(KBS_CZA_BoattiniM_2023[ , 19], as.numeric)
+KBS_CZA_BoattiniM_2023[, 20] <- lapply(KBS_CZA_BoattiniM_2023[ , 20], as.numeric)
+KBS_CZA_BoattiniM_2023[, 21] <- lapply(KBS_CZA_BoattiniM_2023[ , 21], as.numeric)
+KBS_CZA_BoattiniM_2023[, 35] <- lapply(KBS_CZA_BoattiniM_2023[ , 35], as.numeric)
+KBS_CZA_BoattiniM_2023[, 40] <- lapply(KBS_CZA_BoattiniM_2023[ , 40], as.numeric)
+
+KBS_CZA_BoattiniM_2023 <- KBS_CZA_BoattiniM_2023 %>% mutate_if(is.character, as.factor)
+                                     
+names(KBS_CZA_BoattiniM_2023)
+
+KBS_CZA_BoattiniM_2023 %>% group_by(Monotherapy, Combo_two_antimicr, Combo_three_or_more_antimicr) %>% count()
+
+#   Monotherapy Combo_two_antimicr Combo_three_or_more_antimicr     n
+# 1 0           0                  0                                2
+# 2 0           0                  1                                5
+# 3 0           1                  0                               19
+# 4 1           0                  0                               11
+
+KBS_CZA_BoattiniM_2023 <- KBS_CZA_BoattiniM_2023 %>% mutate(Mono=ifelse(Monotherapy==1,1,0)) %>% mutate(Combo=ifelse(Combo_two_antimicr==1|Combo_three_or_more_antimicr==1,1,0))
+
+KBS_CZA_BoattiniM_2023 %>% group_by(Mono, Combo) %>% count()
+
+# 1     0     0     2
+# 2     0     1    24
+# 3     1     0    11
+
+
+KBS_CZA_BoattiniM_2023 <- KBS_CZA_BoattiniM_2023 %>% mutate(Beta=ifelse(MEV_including==1|CFDC_including==1|(CZA_including_treat==1&Carbapenem_including_treat==1)|(CZA_including_treat==1&Prolonged_B_lact_infusion==1),1,0))
+
+
+temp <- as.matrix(
+  KBS_CZA_BoattiniM_2023 %>% filter(Mono==1) %>% group_by(Beta, D30_mortality) %>% 
+    count() %>% ungroup() %>%
+  spread(key=Beta, value=n))
+
+matrix(as.numeric(c(temp[1,2], temp[1,3], temp[2,2], temp[2,3])), nrow=2) 
+
+temp[2,2] <- 0
+
+fisher.test( matrix(as.numeric(c(temp[1,2], temp[1,3], temp[2,2], temp[2,3])), nrow=2)  )
+
+# 	Fisher's Exact Test for Count Data
+# 
+# data:  matrix(as.numeric(c(temp[1, 2], temp[1, 3], temp[2, 2], temp[2, 3])), nrow = 2)
+# p-value = 0.3636
+# alternative hypothesis: true odds ratio is not equal to 1
+# 95 percent confidence interval:
+#  0.0448716       Inf
+# sample estimates:
+# odds ratio 
+#        Inf 
+
+temp <- as.matrix(
+  KBS_CZA_BoattiniM_2023 %>% filter(Mono==1) %>% group_by(Beta, D_30 In_hospital_death) %>% 
+    count() %>% ungroup() %>%
+  spread(key=Beta, value=n))
+
+matrix(as.numeric(c(temp[1,2], temp[1,3], temp[2,2], temp[2,3])), nrow=2) 
+
+temp[2,2] <- 0
+
+fisher.test( matrix(as.numeric(c(temp[1,2], temp[1,3], temp[2,2], temp[2,3])), nrow=2)  )
+
+# 	Fisher's Exact Test for Count Data
+# 
+# data:  matrix(as.numeric(c(temp[1, 2], temp[1, 3], temp[2, 2], temp[2, 3])), nrow = 2)
+# p-value = 0.3636
+# alternative hypothesis: true odds ratio is not equal to 1
+# 95 percent confidence interval:
+#  0.0448716       Inf
+# sample estimates:
+# odds ratio 
+#        Inf 
+
+# Only 1 died , it was in fact ON betalacts
+
+
+
+
+temp <- as.matrix(
+  KBS_CZA_BoattiniM_2023 %>% filter(Combo==1) %>% group_by(Beta, D30_mortality) %>% 
+    count() %>% ungroup() %>%
+  spread(key=Beta, value=n))
+
+matrix(as.numeric(c(temp[1,2], temp[1,3], temp[2,2], temp[2,3])), nrow=2) 
+
+fisher.test( matrix(as.numeric(c(temp[1,2], temp[1,3], temp[2,2], temp[2,3])), nrow=2)  )
+
+# 	Fisher's Exact Test for Count Data
+# 
+# data:  matrix(as.numeric(c(temp[1, 2], temp[1, 3], temp[2, 2], temp[2, 3])), nrow = 2)
+# p-value = 0.5784
+# alternative hypothesis: true odds ratio is not equal to 1
+# 95 percent confidence interval:
+#  0.0262424 7.4932654
+# sample estimates:
+# odds ratio 
+# 0.4453894 
+
+
+
+
+temp <- as.matrix(
+  KBS_CZA_BoattiniM_2023 %>% filter(Combo==1) %>% group_by(Beta, In_hospital_death) %>% 
+    count() %>% ungroup() %>%
+  spread(key=Beta, value=n))
+
+matrix(as.numeric(c(temp[1,2], temp[1,3], temp[2,2], temp[2,3])), nrow=2) 
+
+fisher.test( matrix(as.numeric(c(temp[1,2], temp[1,3], temp[2,2], temp[2,3])), nrow=2)  )
+
+# 	Fisher's Exact Test for Count Data
+# 
+# data:  matrix(as.numeric(c(temp[1, 2], temp[1, 3], temp[2, 2], temp[2, 3])), nrow = 2)
+# p-value = 1
+# alternative hypothesis: true odds ratio is not equal to 1
+# 95 percent confidence interval:
+#   0.1036292 14.0634018
+# sample estimates:
+# odds ratio 
+#          1 
+
+
+
+
+temp <- as.matrix(
+  KBS_CZA_BoattiniM_2023 %>% group_by(Combo, D30_mortality) %>% 
+    count() %>% ungroup() %>%
+  spread(key=Combo, value=n))
+
+matrix(as.numeric(c(temp[1,2], temp[1,3], temp[2,2], temp[2,3])), nrow=2) 
+
+fisher.test( matrix(as.numeric(c(temp[1,2], temp[1,3], temp[2,2], temp[2,3])), nrow=2)  )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+KBS_CZA_BoattiniM_2023 <- fread("KBS_CZA_BoattiniM_2023.txt", sep = "\t" , colClasses = "character")
+data.frame(colSums(KBS_CZA_BoattiniM_2023==""))
+  
+KBS_CZA_BoattiniM_2023$D30_mortality[KBS_CZA_BoattiniM_2023$D30_mortality==""] <- 0
+
+KBS_CZA_BoattiniM_2023$D30_mortality <- as.factor(KBS_CZA_BoattiniM_2023$D30_mortality)
+KBS_CZA_BoattiniM_2023$In_hospital_death <- as.factor(KBS_CZA_BoattiniM_2023$In_hospital_death)
+
+KBS_CZA_BoattiniM_2023 <- KBS_CZA_BoattiniM_2023 %>% mutate(Prolonged_B_lact_infusion = ifelse(Prolonged_B_lact_infusion=="", 0, Prolonged_B_lact_infusion))
+KBS_CZA_BoattiniM_2023 <- KBS_CZA_BoattiniM_2023 %>% mutate(KPC_Infection_relapse = ifelse(KPC_Infection_relapse=="", 0, KPC_Infection_relapse))
+KBS_CZA_BoattiniM_2023 <- KBS_CZA_BoattiniM_2023 %>% mutate(Dyalisis_30day_preceding = ifelse(Dyalisis_30day_preceding=="", 1, Dyalisis_30day_preceding))
+
+KBS_CZA_BoattiniM_2023[, 1] <- lapply(KBS_CZA_BoattiniM_2023[ , 1], as.numeric)
+KBS_CZA_BoattiniM_2023[, 12] <- lapply(KBS_CZA_BoattiniM_2023[ , 12], as.numeric)
+KBS_CZA_BoattiniM_2023[, 18] <- lapply(KBS_CZA_BoattiniM_2023[ , 18], as.numeric)
+KBS_CZA_BoattiniM_2023[, 19] <- lapply(KBS_CZA_BoattiniM_2023[ , 19], as.numeric)
+KBS_CZA_BoattiniM_2023[, 20] <- lapply(KBS_CZA_BoattiniM_2023[ , 20], as.numeric)
+KBS_CZA_BoattiniM_2023[, 21] <- lapply(KBS_CZA_BoattiniM_2023[ , 21], as.numeric)
+KBS_CZA_BoattiniM_2023[, 35] <- lapply(KBS_CZA_BoattiniM_2023[ , 35], as.numeric)
+KBS_CZA_BoattiniM_2023[, 40] <- lapply(KBS_CZA_BoattiniM_2023[ , 40], as.numeric)
+
+KBS_CZA_BoattiniM_2023 <- KBS_CZA_BoattiniM_2023 %>% mutate_if(is.character, as.factor)
+                                     
+names(KBS_CZA_BoattiniM_2023)
+
+KBS_CZA_BoattiniM_2023 %>% mutate(group=ifelse(CKD==0&AKI==0&Adjusted_for_renal_function==0,1,
+                                               ifelse( (CKD==1|AKI==1) & Adjusted_for_renal_function==0,2,
+                                                      ifelse( (CKD==1|AKI==1)&Adjusted_for_renal_function==1,3,NA)))) %>%
+  select(group, D30_mortality, In_hospital_death) %>% group_by(group) %>% count()
+
+
+
+KBS_CZA_BoattiniM_2023 <- KBS_CZA_BoattiniM_2023 %>% mutate(group=ifelse(CKD==0&AKI==0&Adjusted_for_renal_function==0,1,
+                                               ifelse( (CKD==1|AKI==1) & Adjusted_for_renal_function==0,2,
+                                                      ifelse( (CKD==1|AKI==1)&Adjusted_for_renal_function==1,3,NA)))) %>%
+  select(group, D30_mortality, In_hospital_death)
+
+
+KBS_CZA_BoattiniM_2023 <- KBS_CZA_BoattiniM_2023 %>% mutate(dead=ifelse(D30_mortality==1|In_hospital_death==1,1,0)) %>% select(-c(D30_mortality, In_hospital_death))
+
+KBS_CZA_BoattiniM_2023 %>% group_by(group, dead) %>% drop_na() %>% count() %>% spread(key=group, value=n)
+
+#    dead   `1`   `2`   `3`
+# 1     0    21     4     4
+# 2     1    NA     5     2
+
+
+
+# ---------------
