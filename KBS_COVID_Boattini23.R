@@ -92,20 +92,6 @@ KBS_COVID_Boattini23_complete <- mice(KBS_COVID_Boattini23, m=50, maxit = 40)
 
 data.frame(KBS_COVID_Boattini23_complete$method)
 
-# pmm, predictive mean matching (numeric data) 
-# logreg, logistic regression imputation (binary data, factor with 2 levels) 
-# polyreg, polytomous regression imputation for unordered categorical data (factor > 2 levels) 
-# polr, proportional odds model for (ordered, > 2 levels)
-
- 
-# D_dimer                                                                    pmm
-# LDH                                                                        pmm
-# CPK                                                                        pmm
-# NT_proBNP                                                                  pmm
-# Troponin_T                                                                 pmm
-# Ferritin                                                                   pmm
-
-
 Imputed_data=complete(KBS_COVID_Boattini23_complete)
 
 densityplot(KBS_COVID_Boattini23_complete)
@@ -239,20 +225,6 @@ storage_Death$std.error<- round(storage_Death$std.error,digits=5)
 
 storage_Death %>% filter(p.value<0.05)
 
-#                          feature statistic       p.value    estimate   std.error        OR     Upper   Lower
-# 1                            Age  3.747678 0.00017847897  0.05679188 0.015153883 1.0584355 1.0745971 1.04252
-# 2      Chronic_pulmonary_disease  2.416307 0.01567885263  0.87448046 0.361907905 2.3976293 3.4431556 1.66958
-# 3                            Neo  2.245741 0.02472059793  0.87422727 0.389282311 2.3970223 3.5378160 1.62409
-# 4     Charlson_comorbidity_index  3.522457 0.00042756594  0.24230006 0.068787224 1.2741765 1.3649083 1.18948
-# 5    Bilateral_pneumonia_or_ARDS  2.451877 0.01421131887  1.40761701 0.574097701 4.0862064 7.2551728 2.30140
-# 6              Lymphocytes_count -2.820339 0.00479729739 -0.71869914 0.254827237 0.4873859 0.6288441 0.37775
-# 7                       IMV_ecmo  3.903681 0.00009474049  1.20122177 0.307715117 3.3241758 4.5219209 2.44368
-# 8                  CN_MV_MR_CPAP  2.383670 0.01714097110  1.16575159 0.489057483 3.2083333 5.2320809 1.96736
-# 9  Dexamethasone_glucocorticoids  3.149660 0.00163460379  1.42138568 0.451282209 4.1428571 6.5056296 2.63822
-# 10                           LoS -2.787445 0.00531254853 -0.01777746 0.006377689 0.9823796 0.9886650 0.97613
-# 11                           ICU  2.460833 0.01386148481  0.76595222 0.311257287 2.1510417 2.9364739 1.57569
-# 12                       ICU_LoS  1.991214 0.04645740473  0.02368782 0.011896173 1.0239706 1.0362247 1.01186
-
 
 model <- (glm(Death ~ 
       Age  +
@@ -278,17 +250,7 @@ model$Lower <- exp(model$estimate - model$std.error)
 model <- model[,c(1,4,5,2,3,6,7,8)]
 data.frame(model)
 
-#                              term  statistic       p.value    estimate  std.error          OR      Upper        Lower
-# 1                     (Intercept) -4.0772907 0.00004556352 -6.75862756 1.65762712 0.001160821 0.00609065 0.0002212417
-# 2                             Age  1.8712603 0.06130900928  0.04036137 0.02156908 1.041186961 1.06388835 1.0189699731
-# 3      Chronic_pulmonary_disease1  1.3220196 0.18616162015  0.61939917 0.46852495 1.857811477 2.96810623 1.1628503881
-# 4                            Neo1  1.4876132 0.13685293935  0.85659702 0.57581974 2.355132584 4.18881034 1.3241586622
-# 5      Charlson_comorbidity_index  2.6393717 0.00830598450  0.30294674 0.11477987 1.353842350 1.51850546 1.2070349154
-# 6    Bilateral_pneumonia_or_ARDS1  0.3068933 0.75892460051  0.23147727 0.75425982 1.260460679 2.67978640 0.5928685681
-# 7               Lymphocytes_count -2.0660579 0.03882301160 -0.59564539 0.28830043 0.551206710 0.73539688 0.4131494792
-# 8                       IMV_ecmo1  3.8816417 0.00010375365  1.78301348 0.45934519 5.947752853 9.41551320 3.7571785247
-# 9                  CN_MV_MR_CPAP1  0.9255362 0.35468708062  0.63614721 0.68732832 1.889188202 3.75645439 0.9501065887
-# 10 Dexamethasone_glucocorticoids1  2.2011190 0.02772759716  1.31166308 0.59590738 3.712342513 6.73670182 2.0457320654
+
 
 
 # ----------------------------
@@ -591,57 +553,7 @@ preds <- predict(cv.lasso, newx = x, type = 'response')
 perf <- performance(prediction(preds, y), 'tpr', 'fpr')
 plot(perf)
 
-
-# 48 x 1 sparse Matrix of class "dgCMatrix"
-#                                                        s1
-# (Intercept)                                  -2.272482788
-# Age                                           0.014051638
-# Gender1                                       .          
-# Community_adquired_SARS_CoV_2_infection1      .          
-# Chronic_heart_disease1                        .          
-# Chronic_pulmonary_disease1                    .          
-# Chronic_Kidney_disease1                       .          
-# Chronic_liver_disease1                        .          
-# Neo1                                          .          
-# SOT1                                          .          
-# Diabetes1                                     .          
-# Obesity1                                      .          
-# Autoimmune_disorder1                          .          
-# Charlson_comorbidity_index                    0.135014948
-# Unilateral_pneumonia1                         .          
-# Bilateral_pneumonia_or_ARDS1                  .          
-# Pulmonary_embolism1                           .          
-# D_dimer                                       .          
-# LDH                                           .          
-# CPK                                           .          
-# NT_proBNP                                     .          
-# Troponin_T                                    .          
-# Ferritin                                      .          
-# Creatinine                                    .          
-# Lymphocytes_count                            -0.091873457
-# Procalcitonin                                 .          
-# CRP                                           .          
-# IMV_ecmo1                                     0.729527557
-# CN_MV_MR_CPAP1                                .          
-# Hydroxychloroquine1                           .          
-# Dexamethasone_glucocorticoids1                0.424945181
-# Lopinavir_ritonavir1                          .          
-# Remdesivir1                                   .          
-# Tocilizimab1                                  .          
-# Antimicrobial1                                .          
-# Colonized_KPC_andor_ACB1                      .          
-# Colonized_KPC_only1                           .          
-# Colonized_ACB_only1                           .          
-# Colonized_KPC_and_ACB1                        .          
-# Colonized_KPC_andor_ACB_BSI_andor_Pneumonia1  .          
-# kpc_andor_acb_BSI1                            .          
-# kpc_andor_acb_pneumonia1                      .          
-# BSI_or_pneumonia_kpc_only1                    .          
-# BSI_or_pneumonia_acb_only1                    .          
-# BSI_or_pneumonia_kpc_acb1                     .          
-# LoS                                          -0.002205835
-# ICU1                                          .          
-# ICU_LoS                                       .   
+           
 
 
 RegSubs <- fread("RegSubs.csv")
